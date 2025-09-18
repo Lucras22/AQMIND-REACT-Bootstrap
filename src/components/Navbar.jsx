@@ -38,7 +38,7 @@ function AppNavbar() {
             ) : (
               <>
                 <Nav.Link as={Link} to="/Dashboard">Dashboard</Nav.Link>
-                <Nav.Link as={Link} to="/Reservatorios">Reservatorios</Nav.Link>
+                <Nav.Link as={Link} to="/AQMIND">AQMIND</Nav.Link>
                 <Nav.Link as={Link} to="/profile">Profile</Nav.Link>
                 <Nav.Link onClick={handleLogout}>Logout</Nav.Link>
               </>

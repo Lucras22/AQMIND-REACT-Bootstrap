@@ -7,7 +7,7 @@ import Profile from "./pages/Profile";
 import Home from "./pages/Home";
 import Sobre from "./pages/Sobre";
 import Dashboard from "./pages/Dashboard";
-import Reservatorios from "./pages/Reservatorios";
+import AQMIND from "./pages/AQMIND";
 
 
 function App() {
@@ -23,7 +23,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/sobre" element={<Sobre />} /> 
             <Route path="/dashboard" element={<Dashboard />} /> 
-            <Route path="/reservatorios" element={<Reservatorios />} /> 
+            <Route path="/AQMIND" element={<AQMIND />} /> 
           </Routes>
         </div>
         <AppFooter />
