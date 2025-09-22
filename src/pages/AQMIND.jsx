@@ -8,13 +8,18 @@ import {
   orderBy,
   deleteDoc,
   doc,
+  updateDoc,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
+import { Modal, Button, Form } from "react-bootstrap";
 
 const AQMIND = () => {
   const [aqmind, setAQMIND] = useState([]);
-  const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState(null);
+
+  const [showModal, setShowModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentReservatorio, setCurrentReservatorio] = useState(null);
 
   const [formData, setFormData] = useState({
     nome: "",
@@ -26,7 +31,6 @@ const AQMIND = () => {
     comprimento: "",
   });
 
-  // 🔹 Captura usuário logado
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
@@ -40,7 +44,6 @@ const AQMIND = () => {
     return () => unsub();
   }, []);
 
-  // 🔹 Função para carregar reservatórios do Firestore
   const carregarReservatorios = async (uid) => {
     try {
       const ref = collection(db, "users", uid, "reservatorios");
@@ -71,61 +74,78 @@ const AQMIND = () => {
     }
   };
 
-  // 🔹 Salvar novo reservatório
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!user) {
-      alert("Você precisa estar logado para criar reservatórios.");
-      return;
-    }
+  const handleSave = async () => {
+    if (!user) return alert("Você precisa estar logado.");
 
     const volume = calcularVolume();
-
-    const novoReservatorio = {
-      nome: formData.nome,
-      endereco: formData.endereco,
-      formato: formData.formato,
+    const dados = {
+      ...formData,
       altura: formData.altura ? parseFloat(formData.altura) : null,
       raio: formData.raio ? parseFloat(formData.raio) : null,
       largura: formData.largura ? parseFloat(formData.largura) : null,
       comprimento: formData.comprimento ? parseFloat(formData.comprimento) : null,
-      volume: volume,
+      volume,
       criadoEm: new Date(),
       usuarioId: user.uid,
     };
 
     try {
-      const ref = collection(db, "users", user.uid, "reservatorios");
-      const docRef = await addDoc(ref, novoReservatorio);
+      if (isEditing && currentReservatorio) {
+        // Atualizar
+        const ref = doc(db, "users", user.uid, "reservatorios", currentReservatorio.id);
+        await updateDoc(ref, dados);
+        setAQMIND(
+          aqmind.map((r) =>
+            r.id === currentReservatorio.id ? { ...r, ...dados } : r
+          )
+        );
+      } else {
+        // Criar novo
+        const ref = collection(db, "users", user.uid, "reservatorios");
+        const docRef = await addDoc(ref, dados);
+        setAQMIND([{ id: docRef.id, ...dados }, ...aqmind]);
+      }
 
-      // Atualiza localmente com ID do Firestore
-      setAQMIND([{ id: docRef.id, ...novoReservatorio }, ...aqmind]);
-      setShowForm(false);
-
-      // Reset form
-      setFormData({
-        nome: "",
-        endereco: "",
-        formato: "cilindro",
-        altura: "",
-        raio: "",
-        largura: "",
-        comprimento: "",
-      });
+      handleClose();
     } catch (error) {
       console.error("Erro ao salvar reservatório:", error);
     }
   };
 
-  // 🔹 Excluir reservatório
   const handleDelete = async (id) => {
     if (!user) return;
     try {
       await deleteDoc(doc(db, "users", user.uid, "reservatorios", id));
       setAQMIND(aqmind.filter((r) => r.id !== id));
     } catch (error) {
-      console.error("Erro ao excluir reservatório:", error);
+      console.error("Erro ao excluir:", error);
     }
+  };
+
+  const handleEdit = (reservatorio) => {
+    setIsEditing(true);
+    setCurrentReservatorio(reservatorio);
+    setFormData(reservatorio);
+    setShowModal(true);
+  };
+
+  const handleOpen = () => {
+    setIsEditing(false);
+    setFormData({
+      nome: "",
+      endereco: "",
+      formato: "cilindro",
+      altura: "",
+      raio: "",
+      largura: "",
+      comprimento: "",
+    });
+    setShowModal(true);
+  };
+
+  const handleClose = () => {
+    setShowModal(false);
+    setCurrentReservatorio(null);
   };
 
   return (
@@ -136,108 +156,15 @@ const AQMIND = () => {
         <p>⚠️ Faça login para gerenciar seus reservatórios.</p>
       ) : (
         <>
-          <button onClick={() => setShowForm(!showForm)}>
-            {showForm ? "Cancelar" : "Criar Reservatório"}
-          </button>
+          <Button variant="primary" onClick={handleOpen}>
+            Criar Reservatório
+          </Button>
 
-          {showForm && (
-            <form onSubmit={handleSubmit} style={{ marginTop: "20px" }}>
-              <div>
-                <label>Nome:</label>
-                <input
-                  type="text"
-                  name="nome"
-                  value={formData.nome}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-
-              <div>
-                <label>Endereço:</label>
-                <input
-                  type="text"
-                  name="endereco"
-                  value={formData.endereco}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-
-              <div>
-                <label>Formato:</label>
-                <select
-                  name="formato"
-                  value={formData.formato}
-                  onChange={handleChange}
-                >
-                  <option value="cilindro">Cilindro</option>
-                  <option value="retangular">Retangular</option>
-                </select>
-              </div>
-
-              {formData.formato === "cilindro" ? (
-                <>
-                  <label>Altura (m):</label>
-                  <input
-                    type="number"
-                    name="altura"
-                    value={formData.altura}
-                    onChange={handleChange}
-                    step="0.01"
-                    required
-                  />
-                  <label>Raio (m):</label>
-                  <input
-                    type="number"
-                    name="raio"
-                    value={formData.raio}
-                    onChange={handleChange}
-                    step="0.01"
-                    required
-                  />
-                </>
-              ) : (
-                <>
-                  <label>Altura (m):</label>
-                  <input
-                    type="number"
-                    name="altura"
-                    value={formData.altura}
-                    onChange={handleChange}
-                    step="0.01"
-                    required
-                  />
-                  <label>Largura (m):</label>
-                  <input
-                    type="number"
-                    name="largura"
-                    value={formData.largura}
-                    onChange={handleChange}
-                    step="0.01"
-                    required
-                  />
-                  <label>Comprimento (m):</label>
-                  <input
-                    type="number"
-                    name="comprimento"
-                    value={formData.comprimento}
-                    onChange={handleChange}
-                    step="0.01"
-                    required
-                  />
-                </>
-              )}
-
-              <button type="submit">Salvar</button>
-            </form>
-          )}
-
-          <h2 style={{ marginTop: "30px" }}>Lista de Reservatórios</h2>
+          <h2 className="mt-4">Lista de Reservatórios</h2>
           {aqmind.length === 0 ? (
             <p>Nenhum reservatório cadastrado.</p>
           ) : (
-            <table border="1" cellPadding="8" cellSpacing="0">
+            <table className="table table-dark table-striped mt-3">
               <thead>
                 <tr>
                   <th>Nome</th>
@@ -255,18 +182,129 @@ const AQMIND = () => {
                     <td>{r.formato}</td>
                     <td>{r.volume ? r.volume.toFixed(2) : "—"}</td>
                     <td>
-                      <button
+                      <Button
+                        variant="warning"
+                        size="sm"
+                        className="me-2"
+                        onClick={() => handleEdit(r)}
+                      >
+                        ✏ Editar
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
                         onClick={() => handleDelete(r.id)}
-                        style={{ color: "red" }}
                       >
                         🗑 Excluir
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
+
+          {/* Modal de Cadastro/Edição */}
+          <Modal show={showModal} onHide={handleClose} size="lg">
+            <Modal.Header closeButton>
+              <Modal.Title>
+                {isEditing ? "Editar Reservatório" : "Novo Reservatório"}
+              </Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Form>
+                <Form.Group>
+                  <Form.Label>Nome:</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="nome"
+                    value={formData.nome}
+                    onChange={handleChange}
+                    required
+                  />
+                </Form.Group>
+
+                <Form.Group>
+                  <Form.Label>Endereço:</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="endereco"
+                    value={formData.endereco}
+                    onChange={handleChange}
+                    required
+                  />
+                </Form.Group>
+
+                <Form.Group>
+                  <Form.Label>Formato:</Form.Label>
+                  <Form.Select
+                    name="formato"
+                    value={formData.formato}
+                    onChange={handleChange}
+                  >
+                    <option value="cilindro">Cilindro</option>
+                    <option value="retangular">Retangular</option>
+                  </Form.Select>
+                </Form.Group>
+
+                {formData.formato === "cilindro" ? (
+                  <>
+                    <Form.Label>Altura (m):</Form.Label>
+                    <Form.Control
+                      type="number"
+                      name="altura"
+                      value={formData.altura}
+                      onChange={handleChange}
+                      step="0.01"
+                    />
+                    <Form.Label>Raio (m):</Form.Label>
+                    <Form.Control
+                      type="number"
+                      name="raio"
+                      value={formData.raio}
+                      onChange={handleChange}
+                      step="0.01"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Form.Label>Altura (m):</Form.Label>
+                    <Form.Control
+                      type="number"
+                      name="altura"
+                      value={formData.altura}
+                      onChange={handleChange}
+                      step="0.01"
+                    />
+                    <Form.Label>Largura (m):</Form.Label>
+                    <Form.Control
+                      type="number"
+                      name="largura"
+                      value={formData.largura}
+                      onChange={handleChange}
+                      step="0.01"
+                    />
+                    <Form.Label>Comprimento (m):</Form.Label>
+                    <Form.Control
+                      type="number"
+                      name="comprimento"
+                      value={formData.comprimento}
+                      onChange={handleChange}
+                      step="0.01"
+                    />
+                  </>
+                )}
+              </Form>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onClick={handleClose}>
+                Cancelar
+              </Button>
+              <Button variant="success" onClick={handleSave}>
+                Salvar
+              </Button>
+            </Modal.Footer>
+          </Modal>
         </>
       )}
     </div>
