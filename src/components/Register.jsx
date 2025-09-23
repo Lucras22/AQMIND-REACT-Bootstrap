@@ -1,5 +1,5 @@
+// Register.jsx
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
 import { auth, db } from "../firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
@@ -12,8 +12,8 @@ function Register() {
     email: "",
     password: "",
     confirmPassword: "",
+    role: "comum", // novo campo com valor padrão
   });
-  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -36,15 +36,16 @@ function Register() {
 
       const user = userCredential.user;
 
-      // Salva dados extras no Firestore
+      // Salva dados extras no Firestore, incluindo o role
       await setDoc(doc(db, "users", user.uid), {
         firstname: form.firstname,
         lastname: form.lastname,
         email: form.email,
+        role: form.role,
       });
 
       alert("Cadastro realizado com sucesso!");
-      navigate("/profile");
+      // ❌ removemos navigate, pois agora está dentro do Profile
     } catch (error) {
       alert("Erro no cadastro: " + error.message);
     }
@@ -52,8 +53,7 @@ function Register() {
 
   return (
     <form className="form" onSubmit={handleRegister}>
-      <p className="title">Register</p>
-      <p className="message">Signup now and get full access to our app.</p>
+      <p className="title">Registrar novo usuário</p>
 
       <div className="flex">
         <label>
@@ -112,13 +112,17 @@ function Register() {
         <span>Confirm password</span>
       </label>
 
-      <button type="submit" className="submit">
-        Submit
-      </button>
+      <label>
+        <span>Role</span>
+        <select className="input" name="role" value={form.role} onChange={handleChange}>
+          <option value="comum">Comum</option>
+          <option value="admin">Admin</option>
+        </select>
+      </label>
 
-      <p className="signin">
-        Already have an account? <Link to="/login">Signin</Link>
-      </p>
+      <button type="submit" className="submit">
+        Criar usuário
+      </button>
     </form>
   );
 }

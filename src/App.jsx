@@ -2,13 +2,10 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import AppNavbar from "./components/Navbar";
 import AppFooter from "./components/Footer";
 import Login from "./pages/Login";
-import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import Home from "./pages/Home";
-import Sobre from "./pages/Sobre";
 import Dashboard from "./pages/Dashboard";
 import AQMIND from "./pages/AQMIND";
-
 
 function App() {
   return (
@@ -17,14 +14,12 @@ function App() {
         <AppNavbar />
         <div className="container mt-4 flex-grow-1">
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/sobre" element={<Sobre />} /> 
-            <Route path="/dashboard" element={<Dashboard />} /> 
-            <Route path="/AQMIND" element={<AQMIND />} /> 
-          </Routes>
+  <Route path="/" element={<Home />} />
+  <Route path="/login" element={<Login />} />
+  <Route path="/profile" element={<Profile />} />
+  <Route path="/dashboard" element={<Dashboard />} /> 
+  <Route path="/AQMIND" element={<AQMIND />} /> 
+</Routes>
         </div>
         <AppFooter />
       </div>

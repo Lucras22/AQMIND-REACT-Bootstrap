@@ -4,11 +4,13 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc, updateDoc, collection, getDocs } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { Modal, Button, Form } from "react-bootstrap";
+import Register from "../components/Register";
 
 function Profile() {
   const [user, setUser] = useState(null);
   const [extraData, setExtraData] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
   const [formData, setFormData] = useState({
     firstname: "",
     lastname: "",
@@ -29,7 +31,6 @@ function Profile() {
       if (currentUser) {
         setUser(currentUser);
 
-        // Buscar dados extras
         const docRef = doc(db, "users", currentUser.uid);
         const docSnap = await getDoc(docRef);
 
@@ -48,7 +49,6 @@ function Profile() {
           });
         }
 
-        // Contar reservatórios
         const reservatoriosRef = collection(db, "users", currentUser.uid, "reservatorios");
         const snapshot = await getDocs(reservatoriosRef);
         setReservatoriosCount(snapshot.size);
@@ -72,7 +72,6 @@ function Profile() {
 
   const handleSave = async () => {
     if (!user) return;
-
     try {
       const docRef = doc(db, "users", user.uid);
       await updateDoc(docRef, { ...formData });
@@ -95,11 +94,11 @@ function Profile() {
               <>
                 <p><b>Firstname:</b> {extraData.firstname}</p>
                 <p><b>Lastname:</b> {extraData.lastname}</p>
+                <p><b>Role:</b> {extraData.role || "comum"}</p>
               </>
             )}
           </div>
 
-          {/* Dados extras */}
           <div className="bg-dark p-4 rounded mb-5">
             <h4>Informações adicionais</h4>
             <p><b>Rua:</b> {extraData?.rua || "-"}</p>
@@ -115,13 +114,23 @@ function Profile() {
               Editar Dados
             </Button>
             <Button variant="danger" onClick={handleLogout}>Sair</Button>
+
+            {extraData?.role === "admin" && (
+              <Button
+                variant="success"
+                className="ms-2"
+                onClick={() => setShowRegister(true)}
+              >
+                Registrar novo usuário
+              </Button>
+            )}
           </div>
         </>
       ) : (
         <p>Carregando...</p>
       )}
 
-      {/* Modal de edição */}
+      {/* Modal de edição com TODOS os campos */}
       <Modal show={showModal} onHide={() => setShowModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Editar Perfil</Modal.Title>
@@ -201,7 +210,7 @@ function Profile() {
               />
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Label>Email alternativo</Form.Label>
+              <Form.Label>Email Alternativo</Form.Label>
               <Form.Control
                 type="email"
                 name="emailAlternativo"
@@ -215,6 +224,16 @@ function Profile() {
           <Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
           <Button variant="success" onClick={handleSave}>Salvar</Button>
         </Modal.Footer>
+      </Modal>
+
+      {/* Modal com Register (apenas admin) */}
+      <Modal show={showRegister} onHide={() => setShowRegister(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Registrar Novo Usuário</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Register />
+        </Modal.Body>
       </Modal>
     </div>
   );

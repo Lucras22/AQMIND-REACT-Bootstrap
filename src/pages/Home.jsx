@@ -37,7 +37,7 @@ function Home() {
           <p className="lead">Olá, {firstname || user.email}! Que bom te ver de volta.</p>
         ) : (
           <p className="lead">
-            <Link to="/login">Login</Link> ou <Link to="/register">Registre-se</Link> para começar.
+            <Link to="/login">Login</Link> para começar.
           </p>
         )}
       </div>

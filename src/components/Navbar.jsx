@@ -32,13 +32,12 @@ function AppNavbar() {
           <Nav className="ms-auto">
             {!user ? (
               <>
+                <Nav.Link as={Link} to="/">Home</Nav.Link>
                 <Nav.Link as={Link} to="/login">Login</Nav.Link>
-                <Nav.Link as={Link} to="/register">Register</Nav.Link>
               </>
             ) : (
               <>
                 <Nav.Link as={Link} to="/">Home</Nav.Link>
-                <Nav.Link as={Link} to="/Sobre">Sobre</Nav.Link>
                 <Nav.Link as={Link} to="/Dashboard">Dashboard</Nav.Link>
                 <Nav.Link as={Link} to="/AQMIND">AQMIND</Nav.Link>
                 <Nav.Link as={Link} to="/profile">Profile</Nav.Link>
