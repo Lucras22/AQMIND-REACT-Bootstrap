@@ -9,6 +9,7 @@ import {
   deleteDoc,
   doc,
   updateDoc,
+  getDoc,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { Modal, Button, Form } from "react-bootstrap";
@@ -16,6 +17,7 @@ import { Modal, Button, Form } from "react-bootstrap";
 const AQMIND = () => {
   const [aqmind, setAQMIND] = useState([]);
   const [user, setUser] = useState(null);
+  const [userData, setUserData] = useState(null); // dados extras (role)
 
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -32,12 +34,24 @@ const AQMIND = () => {
   });
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (currentUser) => {
+    const unsub = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        carregarReservatorios(currentUser.uid);
+
+        // Carrega role do usuário
+        const docSnap = await getDoc(doc(db, "users", currentUser.uid));
+        if (docSnap.exists()) {
+          setUserData(docSnap.data());
+
+          if (docSnap.data().role === "admin") {
+            carregarTodosReservatorios();
+          } else {
+            carregarReservatorios(currentUser.uid);
+          }
+        }
       } else {
         setUser(null);
+        setUserData(null);
         setAQMIND([]);
       }
     });
@@ -49,10 +63,41 @@ const AQMIND = () => {
       const ref = collection(db, "users", uid, "reservatorios");
       const q = query(ref, orderBy("criadoEm", "desc"));
       const snapshot = await getDocs(q);
-      const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const lista = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        usuarioId: uid,
+        ...doc.data(),
+      }));
       setAQMIND(lista);
     } catch (error) {
       console.error("Erro ao carregar reservatórios:", error);
+    }
+  };
+
+  const carregarTodosReservatorios = async () => {
+    try {
+      const usersSnap = await getDocs(collection(db, "users"));
+      let listaFinal = [];
+
+      for (const userDoc of usersSnap.docs) {
+        const uid = userDoc.id;
+        const dadosUser = userDoc.data();
+        const ref = collection(db, "users", uid, "reservatorios");
+        const q = query(ref, orderBy("criadoEm", "desc"));
+        const snapshot = await getDocs(q);
+        const lista = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          usuarioId: uid,
+          usuarioNome: `${dadosUser.firstname || ""} ${dadosUser.lastname || ""}`.trim(),
+          usuarioEmail: dadosUser.email || "",
+          ...doc.data(),
+        }));
+        listaFinal = [...listaFinal, ...lista];
+      }
+
+      setAQMIND(listaFinal);
+    } catch (error) {
+      console.error("Erro ao carregar todos reservatórios:", error);
     }
   };
 
@@ -86,24 +131,30 @@ const AQMIND = () => {
       comprimento: formData.comprimento ? parseFloat(formData.comprimento) : null,
       volume,
       criadoEm: new Date(),
-      usuarioId: user.uid,
+      usuarioId: currentReservatorio?.usuarioId || user.uid,
     };
 
     try {
       if (isEditing && currentReservatorio) {
-        // Atualizar
-        const ref = doc(db, "users", user.uid, "reservatorios", currentReservatorio.id);
+        const ref = doc(
+          db,
+          "users",
+          currentReservatorio.usuarioId,
+          "reservatorios",
+          currentReservatorio.id
+        );
         await updateDoc(ref, dados);
         setAQMIND(
           aqmind.map((r) =>
-            r.id === currentReservatorio.id ? { ...r, ...dados } : r
+            r.id === currentReservatorio.id && r.usuarioId === currentReservatorio.usuarioId
+              ? { ...r, ...dados }
+              : r
           )
         );
       } else {
-        // Criar novo
         const ref = collection(db, "users", user.uid, "reservatorios");
         const docRef = await addDoc(ref, dados);
-        setAQMIND([{ id: docRef.id, ...dados }, ...aqmind]);
+        setAQMIND([{ id: docRef.id, usuarioId: user.uid, ...dados }, ...aqmind]);
       }
 
       handleClose();
@@ -112,11 +163,12 @@ const AQMIND = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!user) return;
+  const handleDelete = async (reservatorio) => {
     try {
-      await deleteDoc(doc(db, "users", user.uid, "reservatorios", id));
-      setAQMIND(aqmind.filter((r) => r.id !== id));
+      await deleteDoc(
+        doc(db, "users", reservatorio.usuarioId, "reservatorios", reservatorio.id)
+      );
+      setAQMIND(aqmind.filter((r) => !(r.id === reservatorio.id && r.usuarioId === reservatorio.usuarioId)));
     } catch (error) {
       console.error("Erro ao excluir:", error);
     }
@@ -156,17 +208,23 @@ const AQMIND = () => {
         <p>⚠️ Faça login para gerenciar seus reservatórios.</p>
       ) : (
         <>
-          <Button variant="primary" onClick={handleOpen}>
-            Criar Reservatório
-          </Button>
+          {userData?.role !== "admin" && (
+            <Button variant="primary" onClick={handleOpen}>
+              Criar Reservatório
+            </Button>
+          )}
 
-          <h2 className="mt-4">Lista de Reservatórios</h2>
+          <h2 className="mt-4">
+            {userData?.role === "admin" ? "Todos os Reservatórios" : "Seus Reservatórios"}
+          </h2>
+
           {aqmind.length === 0 ? (
             <p>Nenhum reservatório cadastrado.</p>
           ) : (
             <table className="table table-dark table-striped mt-3">
               <thead>
                 <tr>
+                  {userData?.role === "admin" && <th>Usuário</th>}
                   <th>Nome</th>
                   <th>Endereço</th>
                   <th>Formato</th>
@@ -176,7 +234,10 @@ const AQMIND = () => {
               </thead>
               <tbody>
                 {aqmind.map((r) => (
-                  <tr key={r.id}>
+                  <tr key={`${r.usuarioId}-${r.id}`}>
+                    {userData?.role === "admin" && (
+                      <td>{r.usuarioNome || r.usuarioEmail || r.usuarioId}</td>
+                    )}
                     <td>{r.nome}</td>
                     <td>{r.endereco}</td>
                     <td>{r.formato}</td>
@@ -193,7 +254,7 @@ const AQMIND = () => {
                       <Button
                         variant="danger"
                         size="sm"
-                        onClick={() => handleDelete(r.id)}
+                        onClick={() => handleDelete(r)}
                       >
                         🗑 Excluir
                       </Button>

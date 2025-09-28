@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { auth, db } from "../firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc, updateDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, getDocs, deleteDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { Modal, Button, Form } from "react-bootstrap";
 import Register from "../components/Register";
@@ -23,6 +23,7 @@ function Profile() {
     emailAlternativo: "",
   });
   const [reservatoriosCount, setReservatoriosCount] = useState(0);
+  const [usersList, setUsersList] = useState([]); // lista de usuários
 
   const navigate = useNavigate();
 
@@ -47,6 +48,11 @@ function Profile() {
             telefone: docSnap.data().telefone || "",
             emailAlternativo: docSnap.data().emailAlternativo || "",
           });
+
+          // Se for admin, carrega lista de usuários
+          if (docSnap.data().role === "admin") {
+            loadUsers();
+          }
         }
 
         const reservatoriosRef = collection(db, "users", currentUser.uid, "reservatorios");
@@ -59,6 +65,28 @@ function Profile() {
 
     return () => unsubscribe();
   }, [navigate]);
+
+  const loadUsers = async () => {
+    try {
+      const usersRef = collection(db, "users");
+      const snapshot = await getDocs(usersRef);
+      const users = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setUsersList(users);
+    } catch (error) {
+      console.error("Erro ao carregar usuários:", error);
+    }
+  };
+
+  const handleDeleteUser = async (uid) => {
+    if (!window.confirm("Tem certeza que deseja excluir este usuário?")) return;
+
+    try {
+      await deleteDoc(doc(db, "users", uid));
+      setUsersList((prev) => prev.filter((u) => u.id !== uid));
+    } catch (error) {
+      console.error("Erro ao excluir usuário:", error);
+    }
+  };
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -94,7 +122,7 @@ function Profile() {
               <>
                 <p><b>Firstname:</b> {extraData.firstname}</p>
                 <p><b>Lastname:</b> {extraData.lastname}</p>
-                <p><b>Role:</b> {extraData.role || "comum"}</p>
+                <p><b>Role:</b> {extraData.role}</p>
               </>
             )}
           </div>
@@ -125,6 +153,34 @@ function Profile() {
               </Button>
             )}
           </div>
+
+          {/* Se for admin, mostra lista de usuários */}
+          {extraData?.role === "admin" && (
+            <div className="bg-dark p-4 rounded mb-5">
+              <h4>Usuários cadastrados</h4>
+              {usersList.length === 0 ? (
+                <p>Nenhum usuário encontrado.</p>
+              ) : (
+                <ul className="list-group">
+                  {usersList.map((u) => (
+                    <li
+                      key={u.id}
+                      className="list-group-item d-flex justify-content-between align-items-center"
+                    >
+                      <span>{u.firstname} {u.lastname} ({u.email}) - Role: {u.role || "comum"}</span>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => handleDeleteUser(u.id)}
+                      >
+                        Excluir
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </>
       ) : (
         <p>Carregando...</p>
@@ -137,87 +193,18 @@ function Profile() {
         </Modal.Header>
         <Modal.Body>
           <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Firstname</Form.Label>
-              <Form.Control
-                type="text"
-                name="firstname"
-                value={formData.firstname}
-                onChange={handleChange}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Lastname</Form.Label>
-              <Form.Control
-                type="text"
-                name="lastname"
-                value={formData.lastname}
-                onChange={handleChange}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Rua</Form.Label>
-              <Form.Control
-                type="text"
-                name="rua"
-                value={formData.rua}
-                onChange={handleChange}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Número</Form.Label>
-              <Form.Control
-                type="text"
-                name="numero"
-                value={formData.numero}
-                onChange={handleChange}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Bairro</Form.Label>
-              <Form.Control
-                type="text"
-                name="bairro"
-                value={formData.bairro}
-                onChange={handleChange}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Cidade</Form.Label>
-              <Form.Control
-                type="text"
-                name="cidade"
-                value={formData.cidade}
-                onChange={handleChange}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>CEP</Form.Label>
-              <Form.Control
-                type="text"
-                name="cep"
-                value={formData.cep}
-                onChange={handleChange}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Telefone</Form.Label>
-              <Form.Control
-                type="text"
-                name="telefone"
-                value={formData.telefone}
-                onChange={handleChange}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Email Alternativo</Form.Label>
-              <Form.Control
-                type="email"
-                name="emailAlternativo"
-                value={formData.emailAlternativo}
-                onChange={handleChange}
-              />
-            </Form.Group>
+            {/* Campos de edição */}
+            {Object.entries(formData).map(([key, value]) => (
+              <Form.Group className="mb-3" key={key}>
+                <Form.Label>{key}</Form.Label>
+                <Form.Control
+                  type="text"
+                  name={key}
+                  value={value}
+                  onChange={handleChange}
+                />
+              </Form.Group>
+            ))}
           </Form>
         </Modal.Body>
         <Modal.Footer>
