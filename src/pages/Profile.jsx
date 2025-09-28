@@ -23,7 +23,7 @@ function Profile() {
     emailAlternativo: "",
   });
   const [reservatoriosCount, setReservatoriosCount] = useState(0);
-  const [usersList, setUsersList] = useState([]); // lista de usuários
+  const [usersList, setUsersList] = useState([]);
 
   const navigate = useNavigate();
 
@@ -49,7 +49,6 @@ function Profile() {
             emailAlternativo: docSnap.data().emailAlternativo || "",
           });
 
-          // Se for admin, carrega lista de usuários
           if (docSnap.data().role === "admin") {
             loadUsers();
           }
@@ -111,74 +110,84 @@ function Profile() {
   };
 
   return (
-    <div className="container mt-2 text-white">
-      <h2>Perfil</h2>
+    <div className="container mt-4">
+      <h2 className="text-primary mb-4">Meu Perfil</h2>
+
       {user ? (
         <>
-          <div className="bg-dark p-4 rounded mb-3">
-            <h4>Informações Pessoais</h4>
-            <p><b>Email:</b> {user.email}</p>
-            {extraData && (
-              <>
-                <p><b>Firstname:</b> {extraData.firstname}</p>
-                <p><b>Lastname:</b> {extraData.lastname}</p>
-                <p><b>Role:</b> {extraData.role}</p>
-              </>
-            )}
-          </div>
-
-          <div className="bg-dark p-4 rounded mb-5">
-            <h4>Informações adicionais</h4>
-            <p><b>Rua:</b> {extraData?.rua || "-"}</p>
-            <p><b>Número:</b> {extraData?.numero || "-"}</p>
-            <p><b>Bairro:</b> {extraData?.bairro || "-"}</p>
-            <p><b>Cidade:</b> {extraData?.cidade || "-"}</p>
-            <p><b>CEP:</b> {extraData?.cep || "-"}</p>
-            <p><b>Telefone:</b> {extraData?.telefone || "-"}</p>
-            <p><b>Email alternativo:</b> {extraData?.emailAlternativo || "-"}</p>
-            <p><b>Reservatórios cadastrados:</b> {reservatoriosCount}</p>
-
-            <Button variant="primary" className="me-2" onClick={() => setShowModal(true)}>
-              Editar Dados
-            </Button>
-            <Button variant="danger" onClick={handleLogout}>Sair</Button>
-
-            {extraData?.role === "admin" && (
-              <Button
-                variant="success"
-                className="ms-2"
-                onClick={() => setShowRegister(true)}
-              >
-                Registrar novo usuário
-              </Button>
-            )}
-          </div>
-
-          {/* Se for admin, mostra lista de usuários */}
-          {extraData?.role === "admin" && (
-            <div className="bg-dark p-4 rounded mb-5">
-              <h4>Usuários cadastrados</h4>
-              {usersList.length === 0 ? (
-                <p>Nenhum usuário encontrado.</p>
-              ) : (
-                <ul className="list-group">
-                  {usersList.map((u) => (
-                    <li
-                      key={u.id}
-                      className="list-group-item d-flex justify-content-between align-items-center"
-                    >
-                      <span>{u.firstname} {u.lastname} ({u.email}) - Role: {u.role || "comum"}</span>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => handleDeleteUser(u.id)}
-                      >
-                        Excluir
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
+          {/* Card Informações Pessoais */}
+          <div className="card shadow-sm mb-4 border-0">
+            <div className="card-body bg-light rounded">
+              <h4 className="text-primary">Informações Pessoais</h4>
+              <p><b>Email:</b> {user.email}</p>
+              {extraData && (
+                <>
+                  <p><b>Nome:</b> {extraData.firstname} {extraData.lastname}</p>
+                  <p><b>Role:</b> {extraData.role}</p>
+                </>
               )}
+            </div>
+          </div>
+
+          {/* Card Informações adicionais */}
+          <div className="card shadow-sm mb-4 border-0">
+            <div className="card-body bg-white rounded">
+              <h4 className="text-primary">Informações adicionais</h4>
+              <p><b>Rua:</b> {extraData?.rua || "-"}</p>
+              <p><b>Número:</b> {extraData?.numero || "-"}</p>
+              <p><b>Bairro:</b> {extraData?.bairro || "-"}</p>
+              <p><b>Cidade:</b> {extraData?.cidade || "-"}</p>
+              <p><b>CEP:</b> {extraData?.cep || "-"}</p>
+              <p><b>Telefone:</b> {extraData?.telefone || "-"}</p>
+              <p><b>Email alternativo:</b> {extraData?.emailAlternativo || "-"}</p>
+              <p><b>Reservatórios cadastrados:</b> {reservatoriosCount}</p>
+
+              <div className="mt-3">
+                <Button variant="primary" className="me-2" onClick={() => setShowModal(true)}>
+                  Editar Dados
+                </Button>
+                <Button variant="outline-danger" onClick={handleLogout}>
+                  Sair
+                </Button>
+                {extraData?.role === "admin" && (
+                  <Button variant="success" className="ms-2" onClick={() => setShowRegister(true)}>
+                    Registrar novo usuário
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Card Usuários (admin) */}
+          {extraData?.role === "admin" && (
+            <div className="card shadow-sm mb-4 border-0">
+              <div className="card-body bg-light rounded">
+                <h4 className="text-primary">Usuários cadastrados</h4>
+                {usersList.length === 0 ? (
+                  <p>Nenhum usuário encontrado.</p>
+                ) : (
+                  <ul className="list-group">
+                    {usersList.map((u) => (
+                      <li
+                        key={u.id}
+                        className="list-group-item d-flex justify-content-between align-items-center"
+                      >
+                        <span>
+                          {u.firstname} {u.lastname} ({u.email}) - Role:{" "}
+                          {u.role || "comum"}
+                        </span>
+                        <Button
+                          variant="outline-danger"
+                          size="sm"
+                          onClick={() => handleDeleteUser(u.id)}
+                        >
+                          Excluir
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           )}
         </>
@@ -186,17 +195,16 @@ function Profile() {
         <p>Carregando...</p>
       )}
 
-      {/* Modal de edição com TODOS os campos */}
+      {/* Modal de edição */}
       <Modal show={showModal} onHide={() => setShowModal(false)}>
-        <Modal.Header closeButton>
+        <Modal.Header closeButton className="bg-primary text-white">
           <Modal.Title>Editar Perfil</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
-            {/* Campos de edição */}
             {Object.entries(formData).map(([key, value]) => (
               <Form.Group className="mb-3" key={key}>
-                <Form.Label>{key}</Form.Label>
+                <Form.Label className="text-capitalize">{key}</Form.Label>
                 <Form.Control
                   type="text"
                   name={key}
@@ -213,9 +221,9 @@ function Profile() {
         </Modal.Footer>
       </Modal>
 
-      {/* Modal com Register (apenas admin) */}
+      {/* Modal de registro */}
       <Modal show={showRegister} onHide={() => setShowRegister(false)} size="lg">
-        <Modal.Header closeButton>
+        <Modal.Header closeButton className="bg-primary text-white">
           <Modal.Title>Registrar Novo Usuário</Modal.Title>
         </Modal.Header>
         <Modal.Body>

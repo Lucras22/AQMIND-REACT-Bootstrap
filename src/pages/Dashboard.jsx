@@ -1,97 +1,154 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   PieChart, Pie, Cell,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   BarChart, Bar,
 } from "recharts";
+import { Button, Card } from "react-bootstrap";
 
 const Dashboard = () => {
-  const [period, setPeriod] = useState("daily");
+  const [period, setPeriod] = useState("diário");
 
-  // Dados fictícios (você pode substituir pelos reais)
-  const dataPie = [
-    { name: "Produto A", value: 400 },
-    { name: "Produto B", value: 300 },
-    { name: "Produto C", value: 300 },
-    { name: "Produto D", value: 200 },
-  ];
+  // Estado dos gráficos
+  const [dataPie, setDataPie] = useState([
+    { name: "Água", value: 400 },
+    { name: "Refrigerante", value: 300 },
+    { name: "Suco", value: 200 },
+    { name: "Cerveja", value: 100 },
+  ]);
 
-  const dataLine = [
-    { date: "01", value: 30 },
-    { date: "02", value: 45 },
-    { date: "03", value: 28 },
-    { date: "04", value: 60 },
-    { date: "05", value: 50 },
-  ];
+  const [dataLine, setDataLine] = useState([
+    { date: "01", vendas: 30 },
+    { date: "02", vendas: 45 },
+    { date: "03", vendas: 28 },
+    { date: "04", vendas: 60 },
+    { date: "05", vendas: 50 },
+  ]);
 
-  const dataBar = [
-    { name: "Jan", sales: 4000 },
-    { name: "Feb", sales: 3000 },
-    { name: "Mar", sales: 5000 },
-    { name: "Apr", sales: 2000 },
-  ];
+  const [dataBar, setDataBar] = useState([
+    { mes: "Jan", vendas: 4000 },
+    { mes: "Fev", vendas: 3000 },
+    { mes: "Mar", vendas: 5000 },
+    { mes: "Abr", vendas: 2000 },
+  ]);
 
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
-  return (
-    <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
-      <h1>Dashboard</h1>
+  // Atualização automática dos dados
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Atualiza pizza
+      setDataPie((prev) =>
+        prev.map((item) => ({
+          ...item,
+          value: Math.floor(Math.random() * 500) + 100,
+        }))
+      );
 
-      {/* Filtros de período */}
-      <div style={{ marginBottom: "20px" }}>
-        <button onClick={() => setPeriod("daily")} style={{ marginRight: "10px" }}>Diário</button>
-        <button onClick={() => setPeriod("weekly")} style={{ marginRight: "10px" }}>Semanal</button>
-        <button onClick={() => setPeriod("monthly")} style={{ marginRight: "10px" }}>Mensal</button>
-        <button onClick={() => setPeriod("yearly")}>Anual</button>
+      // Atualiza linha
+      setDataLine((prev) =>
+        prev.map((item) => ({
+          ...item,
+          vendas: Math.floor(Math.random() * 70) + 10,
+        }))
+      );
+
+      // Atualiza barras
+      setDataBar((prev) =>
+        prev.map((item) => ({
+          ...item,
+          vendas: Math.floor(Math.random() * 6000) + 1000,
+        }))
+      );
+    }, 3000); // Atualiza a cada 3s
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="container mt-4">
+      <h1 className="text-primary mb-4">Painel de Vendas</h1>
+
+      {/* Botões de filtro */}
+      <div className="mb-4">
+        {["diário", "semanal", "mensal", "anual"].map((p) => (
+          <Button
+            key={p}
+            variant={period === p ? "primary" : "outline-primary"}
+            className="me-2"
+            onClick={() => setPeriod(p)}
+          >
+            {p.charAt(0).toUpperCase() + p.slice(1)}
+          </Button>
+        ))}
       </div>
 
-      {/* Gráficos */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "40px" }}>
+      {/* Layout dos gráficos */}
+      <div className="row g-4">
         {/* Pizza */}
-        <div>
-          <h3>Distribuição de Produtos</h3>
-          <PieChart width={300} height={300}>
-            <Pie
-              data={dataPie}
-              cx="50%"
-              cy="50%"
-              outerRadius={100}
-              fill="#8884d8"
-              dataKey="value"
-              label
-            >
-              {dataPie.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip />
-          </PieChart>
+        <div className="col-lg-4 col-md-6">
+          <Card className="shadow-sm border-0 h-100">
+            <Card.Body className="bg-white rounded">
+              <h5 className="text-primary">Distribuição do Uso da Água</h5>
+              <PieChart width={300} height={300}>
+                <Pie
+                  data={dataPie}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  fill="#8884d8"
+                  dataKey="value"
+                  label
+                >
+                  {dataPie.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </Card.Body>
+          </Card>
         </div>
 
         {/* Linha */}
-        <div>
-          <h3>Vendas ao longo do período ({period})</h3>
-          <LineChart width={500} height={300} data={dataLine}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Line type="monotone" dataKey="value" stroke="#8884d8" activeDot={{ r: 8 }} />
-          </LineChart>
+        <div className="col-lg-8 col-md-6">
+          <Card className="shadow-sm border-0 h-100">
+            <Card.Body className="bg-light rounded">
+              <h5 className="text-primary">
+                Consumo de Água ({period})
+              </h5>
+              <LineChart width={500} height={300} data={dataLine}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="vendas"
+                  stroke="#0088FE"
+                  activeDot={{ r: 8 }}
+                />
+              </LineChart>
+            </Card.Body>
+          </Card>
         </div>
 
         {/* Barras */}
-        <div>
-          <h3>Vendas Mensais</h3>
-          <BarChart width={500} height={300} data={dataBar}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="sales" fill="#82ca9d" />
-          </BarChart>
+        <div className="col-lg-12">
+          <Card className="shadow-sm border-0 h-100">
+            <Card.Body className="bg-white rounded">
+              <h5 className="text-primary">Consumo Mensal</h5>
+              <BarChart width={800} height={300} data={dataBar}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="mes" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="vendas" fill="#00C49F" />
+              </BarChart>
+            </Card.Body>
+          </Card>
         </div>
       </div>
     </div>
