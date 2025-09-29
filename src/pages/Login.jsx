@@ -1,63 +1,75 @@
-import { useState } from "react";
+// src/pages/Login.jsx
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { auth } from "../firebase";
+import { auth } from "../firebase"; // ajuste o caminho se precisar
 import { signInWithEmailAndPassword } from "firebase/auth";
-import "../styles/form.css";
 
-function Login() {
-  const [form, setForm] = useState({ email: "", password: "" });
+export default function Login() {
   const navigate = useNavigate();
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
 
-  const handleChange = (e) => {
+  function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  }
 
-  const handleLogin = async (e) => {
+  async function handleLogin(e) {
     e.preventDefault();
+    setError("");
     try {
       await signInWithEmailAndPassword(auth, form.email, form.password);
-      navigate("/profile");
-    } catch (error) {
-      alert("Erro no login: " + error.message);
+      navigate("/"); // redireciona para Home
+    } catch (err) {
+      setError("Email ou senha inválidos");
     }
-  };
+  }
 
   return (
-    <form className="form" onSubmit={handleLogin}>
-      <p className="title">Login</p>
-      <p className="message">Sign in to access your account.</p>
+    <div className="container d-flex justify-content-center align-items-center min-vh-100">
+      <div
+        className="card shadow p-4 border-0"
+        style={{ maxWidth: "400px", width: "100%" }}
+      >
+        <h3 className="text-center text-primary mb-4 fw-bold">Login</h3>
 
-      <label>
-        <input
-          className="input"
-          type="email"
-          name="email"
-          required
-          onChange={handleChange}
-        />
-        <span>Email</span>
-      </label>
+        {error && (
+          <div className="alert alert-danger py-2 text-center">{error}</div>
+        )}
 
-      <label>
-        <input
-          className="input"
-          type="password"
-          name="password"
-          required
-          onChange={handleChange}
-        />
-        <span>Password</span>
-      </label>
+        <form onSubmit={handleLogin}>
+          <div className="mb-3">
+            <label htmlFor="email" className="form-label text-secondary">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              name="email"
+              className="form-control"
+              required
+              onChange={handleChange}
+            />
+          </div>
 
-      <button type="submit" className="submit">
-        Login
-      </button>
+          <div className="mb-3">
+            <label htmlFor="password" className="form-label text-secondary">
+              Senha
+            </label>
+            <input
+              id="password"
+              type="password"
+              name="password"
+              className="form-control"
+              required
+              onChange={handleChange}
+            />
+          </div>
 
-      <p className="signin">
-        Don’t have an account? <Link to="/register">Signup</Link>
-      </p>
-    </form>
+          <button type="submit" className="btn btn-primary w-100">
+            Entrar
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
-
-export default Login;

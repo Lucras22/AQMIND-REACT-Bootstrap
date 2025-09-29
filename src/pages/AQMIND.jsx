@@ -13,11 +13,12 @@ import {
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { Modal, Button, Form } from "react-bootstrap";
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 const AQMIND = () => {
   const [aqmind, setAQMIND] = useState([]);
   const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState(null); // dados extras (role)
+  const [userData, setUserData] = useState(null);
 
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -37,12 +38,9 @@ const AQMIND = () => {
     const unsub = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-
-        // Carrega role do usuário
         const docSnap = await getDoc(doc(db, "users", currentUser.uid));
         if (docSnap.exists()) {
           setUserData(docSnap.data());
-
           if (docSnap.data().role === "admin") {
             carregarTodosReservatorios();
           } else {
@@ -201,72 +199,70 @@ const AQMIND = () => {
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
-      <h1>Reservatórios</h1>
+    <div className="container py-4" style={{ fontFamily: "Arial, sans-serif", backgroundColor: "#f8f9fa", minHeight: "100vh" }}>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h1>Reservatórios</h1>
+        {user && userData?.role !== "admin" && (
+          <Button variant="primary" onClick={handleOpen}>
+            <i className="bi bi-plus-circle me-1"></i> Criar Reservatório
+          </Button>
+        )}
+      </div>
 
       {!user ? (
-        <p>⚠️ Faça login para gerenciar seus reservatórios.</p>
+        <p className="text-warning">⚠️ Faça login para gerenciar seus reservatórios.</p>
       ) : (
         <>
-          {userData?.role !== "admin" && (
-            <Button variant="primary" onClick={handleOpen}>
-              Criar Reservatório
-            </Button>
-          )}
-
-          <h2 className="mt-4">
-            {userData?.role === "admin" ? "Todos os Reservatórios" : "Seus Reservatórios"}
-          </h2>
+          <h2 className="mt-3">{userData?.role === "admin" ? "Todos os Reservatórios" : "Seus Reservatórios"}</h2>
 
           {aqmind.length === 0 ? (
             <p>Nenhum reservatório cadastrado.</p>
           ) : (
-            <table className="table table-dark table-striped mt-3">
-              <thead>
-                <tr>
-                  {userData?.role === "admin" && <th>Usuário</th>}
-                  <th>Nome</th>
-                  <th>Endereço</th>
-                  <th>Formato</th>
-                  <th>Volume (m³)</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {aqmind.map((r) => (
-                  <tr key={`${r.usuarioId}-${r.id}`}>
-                    {userData?.role === "admin" && (
-                      <td>{r.usuarioNome || r.usuarioEmail || r.usuarioId}</td>
-                    )}
-                    <td>{r.nome}</td>
-                    <td>{r.endereco}</td>
-                    <td>{r.formato}</td>
-                    <td>{r.volume ? r.volume.toFixed(2) : "—"}</td>
-                    <td>
-                      <Button
-                        variant="warning"
-                        size="sm"
-                        className="me-2"
-                        onClick={() => handleEdit(r)}
-                      >
-                        ✏ Editar
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => handleDelete(r)}
-                      >
-                        🗑 Excluir
-                      </Button>
-                    </td>
+            <div className="table-responsive mt-3">
+              <table className="table table-dark table-striped table-hover align-middle">
+                <thead>
+                  <tr>
+                    {userData?.role === "admin" && <th>Usuário</th>}
+                    <th>Nome</th>
+                    <th>Endereço</th>
+                    <th>Formato</th>
+                    <th>Volume (m³)</th>
+                    <th>Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {aqmind.map((r) => (
+                    <tr key={`${r.usuarioId}-${r.id}`}>
+                      {userData?.role === "admin" && (
+                        <td>{r.usuarioNome || r.usuarioEmail || r.usuarioId}</td>
+                      )}
+                      <td>{r.nome}</td>
+                      <td>{r.endereco}</td>
+                      <td>{r.formato}</td>
+                      <td>
+                        {r.volume ? (
+                          <span className="badge bg-info">{r.volume.toFixed(2)}</span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td>
+                        <Button variant="warning" size="sm" className="me-2" onClick={() => handleEdit(r)} title="Editar">
+                          <i className="bi bi-pencil"></i>
+                        </Button>
+                        <Button variant="danger" size="sm" onClick={() => handleDelete(r)} title="Excluir">
+                          <i className="bi bi-trash"></i>
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
 
           {/* Modal de Cadastro/Edição */}
-          <Modal show={showModal} onHide={handleClose} size="lg">
+          <Modal show={showModal} onHide={handleClose} size="lg" centered>
             <Modal.Header closeButton>
               <Modal.Title>
                 {isEditing ? "Editar Reservatório" : "Novo Reservatório"}
@@ -274,86 +270,59 @@ const AQMIND = () => {
             </Modal.Header>
             <Modal.Body>
               <Form>
-                <Form.Group>
-                  <Form.Label>Nome:</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="nome"
-                    value={formData.nome}
-                    onChange={handleChange}
-                    required
-                  />
-                </Form.Group>
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <Form.Group>
+                      <Form.Label>Nome</Form.Label>
+                      <Form.Control type="text" name="nome" value={formData.nome} onChange={handleChange} required />
+                    </Form.Group>
+                  </div>
+                  <div className="col-md-6">
+                    <Form.Group>
+                      <Form.Label>Endereço</Form.Label>
+                      <Form.Control type="text" name="endereco" value={formData.endereco} onChange={handleChange} required />
+                    </Form.Group>
+                  </div>
+                </div>
 
-                <Form.Group>
-                  <Form.Label>Endereço:</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="endereco"
-                    value={formData.endereco}
-                    onChange={handleChange}
-                    required
-                  />
-                </Form.Group>
-
-                <Form.Group>
-                  <Form.Label>Formato:</Form.Label>
-                  <Form.Select
-                    name="formato"
-                    value={formData.formato}
-                    onChange={handleChange}
-                  >
-                    <option value="cilindro">Cilindro</option>
-                    <option value="retangular">Retangular</option>
-                  </Form.Select>
-                </Form.Group>
+                <div className="row g-3 mt-2">
+                  <div className="col-md-4">
+                    <Form.Group>
+                      <Form.Label>Formato</Form.Label>
+                      <Form.Select name="formato" value={formData.formato} onChange={handleChange}>
+                        <option value="cilindro">Cilindro</option>
+                        <option value="retangular">Retangular</option>
+                      </Form.Select>
+                    </Form.Group>
+                  </div>
+                </div>
 
                 {formData.formato === "cilindro" ? (
-                  <>
-                    <Form.Label>Altura (m):</Form.Label>
-                    <Form.Control
-                      type="number"
-                      name="altura"
-                      value={formData.altura}
-                      onChange={handleChange}
-                      step="0.01"
-                    />
-                    <Form.Label>Raio (m):</Form.Label>
-                    <Form.Control
-                      type="number"
-                      name="raio"
-                      value={formData.raio}
-                      onChange={handleChange}
-                      step="0.01"
-                    />
-                  </>
+                  <div className="row g-3 mt-2">
+                    <div className="col-md-6">
+                      <Form.Label>Altura (m)</Form.Label>
+                      <Form.Control type="number" name="altura" value={formData.altura} onChange={handleChange} step="0.01" />
+                    </div>
+                    <div className="col-md-6">
+                      <Form.Label>Raio (m)</Form.Label>
+                      <Form.Control type="number" name="raio" value={formData.raio} onChange={handleChange} step="0.01" />
+                    </div>
+                  </div>
                 ) : (
-                  <>
-                    <Form.Label>Altura (m):</Form.Label>
-                    <Form.Control
-                      type="number"
-                      name="altura"
-                      value={formData.altura}
-                      onChange={handleChange}
-                      step="0.01"
-                    />
-                    <Form.Label>Largura (m):</Form.Label>
-                    <Form.Control
-                      type="number"
-                      name="largura"
-                      value={formData.largura}
-                      onChange={handleChange}
-                      step="0.01"
-                    />
-                    <Form.Label>Comprimento (m):</Form.Label>
-                    <Form.Control
-                      type="number"
-                      name="comprimento"
-                      value={formData.comprimento}
-                      onChange={handleChange}
-                      step="0.01"
-                    />
-                  </>
+                  <div className="row g-3 mt-2">
+                    <div className="col-md-4">
+                      <Form.Label>Altura (m)</Form.Label>
+                      <Form.Control type="number" name="altura" value={formData.altura} onChange={handleChange} step="0.01" />
+                    </div>
+                    <div className="col-md-4">
+                      <Form.Label>Largura (m)</Form.Label>
+                      <Form.Control type="number" name="largura" value={formData.largura} onChange={handleChange} step="0.01" />
+                    </div>
+                    <div className="col-md-4">
+                      <Form.Label>Comprimento (m)</Form.Label>
+                      <Form.Control type="number" name="comprimento" value={formData.comprimento} onChange={handleChange} step="0.01" />
+                    </div>
+                  </div>
                 )}
               </Form>
             </Modal.Body>

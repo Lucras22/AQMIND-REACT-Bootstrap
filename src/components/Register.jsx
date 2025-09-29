@@ -1,33 +1,38 @@
-// Register.jsx
-import { useState } from "react";
+// src/pages/Register.jsx
+import React, { useState } from "react";
 import { auth, db } from "../firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
-import "../styles/form.css";
+import { useNavigate } from "react-router-dom";
 
-function Register() {
+export default function Register() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     firstname: "",
     lastname: "",
     email: "",
     password: "",
     confirmPassword: "",
-    role: "comum", // novo campo com valor padrão
+    role: "comum",
   });
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const handleChange = (e) => {
+  function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  }
 
-  const handleRegister = async (e) => {
+  async function handleRegister(e) {
     e.preventDefault();
+    setError("");
+    setSuccess("");
+
     if (form.password !== form.confirmPassword) {
-      alert("As senhas não coincidem!");
+      setError("As senhas não coincidem!");
       return;
     }
 
     try {
-      // Cria usuário no Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         form.email,
@@ -36,95 +41,121 @@ function Register() {
 
       const user = userCredential.user;
 
-      // Salva dados extras no Firestore, incluindo o role
       await setDoc(doc(db, "users", user.uid), {
         firstname: form.firstname,
         lastname: form.lastname,
         email: form.email,
         role: form.role,
+        createdAt: new Date(),
       });
 
-      alert("Cadastro realizado com sucesso!");
-      // ❌ removemos navigate, pois agora está dentro do Profile
-    } catch (error) {
-      alert("Erro no cadastro: " + error.message);
+      setSuccess("Usuário criado com sucesso!");
+      setForm({
+        firstname: "",
+        lastname: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        role: "comum",
+      });
+
+      // Opcional: redirecionar para login ou outra página
+      // navigate("/login");
+    } catch (err) {
+      setError("Erro no cadastro: " + err.message);
     }
-  };
+  }
 
   return (
-    <form className="form" onSubmit={handleRegister}>
-      <p className="title">Registrar novo usuário</p>
+    <div className="container d-flex justify-content-center align-items-center min-vh-100">
+      <div
+        className="card shadow p-4 border-0"
+        style={{ maxWidth: "400px", width: "100%", borderRadius: "12px" }}
+      >
+        <h3 className="text-center text-primary mb-4 fw-bold">Registrar Usuário</h3>
 
-      <div className="flex">
-        <label>
-          <input
-            className="input"
-            type="text"
-            name="firstname"
-            required
-            onChange={handleChange}
-          />
-          <span>Firstname</span>
-        </label>
+        {error && <div className="alert alert-danger py-2 text-center">{error}</div>}
+        {success && <div className="alert alert-success py-2 text-center">{success}</div>}
 
-        <label>
-          <input
-            className="input"
-            type="text"
-            name="lastname"
-            required
-            onChange={handleChange}
-          />
-          <span>Lastname</span>
-        </label>
+        <form onSubmit={handleRegister}>
+          <div className="mb-3">
+            <label className="form-label text-secondary">Nome</label>
+            <input
+              type="text"
+              name="firstname"
+              className="form-control"
+              required
+              value={form.firstname}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label text-secondary">Sobrenome</label>
+            <input
+              type="text"
+              name="lastname"
+              className="form-control"
+              required
+              value={form.lastname}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label text-secondary">Email</label>
+            <input
+              type="email"
+              name="email"
+              className="form-control"
+              required
+              value={form.email}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label text-secondary">Senha</label>
+            <input
+              type="password"
+              name="password"
+              className="form-control"
+              required
+              value={form.password}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label text-secondary">Confirmar senha</label>
+            <input
+              type="password"
+              name="confirmPassword"
+              className="form-control"
+              required
+              value={form.confirmPassword}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="form-label text-secondary">Role</label>
+            <select
+              name="role"
+              className="form-select"
+              value={form.role}
+              onChange={handleChange}
+            >
+              <option value="comum">Comum</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+
+          <button type="submit" className="btn btn-primary w-100">
+            Criar usuário
+          </button>
+        </form>
       </div>
-
-      <label>
-        <input
-          className="input"
-          type="email"
-          name="email"
-          required
-          onChange={handleChange}
-        />
-        <span>Email</span>
-      </label>
-
-      <label>
-        <input
-          className="input"
-          type="password"
-          name="password"
-          required
-          onChange={handleChange}
-        />
-        <span>Password</span>
-      </label>
-
-      <label>
-        <input
-          className="input"
-          type="password"
-          name="confirmPassword"
-          required
-          onChange={handleChange}
-        />
-        <span>Confirm password</span>
-      </label>
-
-      <label>
-        <span>Role</span>
-        <select className="input" name="role" value={form.role} onChange={handleChange}>
-          <option value="comum">Comum</option>
-          <option value="admin">Admin</option>
-        </select>
-      </label>
-
-      <button type="submit" className="submit">
-        Criar usuário
-      </button>
-    </form>
+    </div>
   );
 }
-
-export default Register;
