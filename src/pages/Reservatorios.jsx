@@ -15,14 +15,22 @@ import { onAuthStateChanged } from "firebase/auth";
 import { Modal, Button, Form } from "react-bootstrap";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
-const AQMIND = () => {
-  const [aqmind, setAQMIND] = useState([]);
+// Função para gerar chave única
+const gerarChave = () => {
+  return crypto.randomUUID();
+};
+
+const Reservatorios = () => {
+  const [reservatorios, setReservatorios] = useState([]);
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
 
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentReservatorio, setCurrentReservatorio] = useState(null);
+
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [reservatorioSelecionado, setReservatorioSelecionado] = useState(null);
 
   const [formData, setFormData] = useState({
     nome: "",
@@ -32,8 +40,11 @@ const AQMIND = () => {
     raio: "",
     largura: "",
     comprimento: "",
+    uso: "Uso pessoal",
+    quantidadePessoas: "",
   });
 
+  // Verifica usuário logado
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
@@ -50,12 +61,13 @@ const AQMIND = () => {
       } else {
         setUser(null);
         setUserData(null);
-        setAQMIND([]);
+        setReservatorios([]);
       }
     });
     return () => unsub();
   }, []);
 
+  // Carregar reservatórios do usuário
   const carregarReservatorios = async (uid) => {
     try {
       const ref = collection(db, "users", uid, "reservatorios");
@@ -66,12 +78,13 @@ const AQMIND = () => {
         usuarioId: uid,
         ...doc.data(),
       }));
-      setAQMIND(lista);
+      setReservatorios(lista);
     } catch (error) {
       console.error("Erro ao carregar reservatórios:", error);
     }
   };
 
+  // Carregar reservatórios de todos os usuários (admin)
   const carregarTodosReservatorios = async () => {
     try {
       const usersSnap = await getDocs(collection(db, "users"));
@@ -86,24 +99,28 @@ const AQMIND = () => {
         const lista = snapshot.docs.map((doc) => ({
           id: doc.id,
           usuarioId: uid,
-          usuarioNome: `${dadosUser.firstname || ""} ${dadosUser.lastname || ""}`.trim(),
+          usuarioNome: `${dadosUser.firstname || ""} ${
+            dadosUser.lastname || ""
+          }`.trim(),
           usuarioEmail: dadosUser.email || "",
           ...doc.data(),
         }));
         listaFinal = [...listaFinal, ...lista];
       }
 
-      setAQMIND(listaFinal);
+      setReservatorios(listaFinal);
     } catch (error) {
       console.error("Erro ao carregar todos reservatórios:", error);
     }
   };
 
+  // Controle de formulário
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
+  // Calcula volume
   const calcularVolume = () => {
     if (formData.formato === "cilindro") {
       const h = parseFloat(formData.altura) || 0;
@@ -117,6 +134,7 @@ const AQMIND = () => {
     }
   };
 
+  // Salvar reservatório
   const handleSave = async () => {
     if (!user) return alert("Você precisa estar logado.");
 
@@ -126,10 +144,18 @@ const AQMIND = () => {
       altura: formData.altura ? parseFloat(formData.altura) : null,
       raio: formData.raio ? parseFloat(formData.raio) : null,
       largura: formData.largura ? parseFloat(formData.largura) : null,
-      comprimento: formData.comprimento ? parseFloat(formData.comprimento) : null,
+      comprimento: formData.comprimento
+        ? parseFloat(formData.comprimento)
+        : null,
+      quantidadePessoas:
+        formData.uso === "Uso pessoal"
+          ? parseInt(formData.quantidadePessoas) || 0
+          : null,
       volume,
       criadoEm: new Date(),
       usuarioId: currentReservatorio?.usuarioId || user.uid,
+      reservatorioKey:
+        currentReservatorio?.reservatorioKey || gerarChave(), // 🔑 chave única
     };
 
     try {
@@ -142,9 +168,10 @@ const AQMIND = () => {
           currentReservatorio.id
         );
         await updateDoc(ref, dados);
-        setAQMIND(
-          aqmind.map((r) =>
-            r.id === currentReservatorio.id && r.usuarioId === currentReservatorio.usuarioId
+        setReservatorios(
+          reservatorios.map((r) =>
+            r.id === currentReservatorio.id &&
+            r.usuarioId === currentReservatorio.usuarioId
               ? { ...r, ...dados }
               : r
           )
@@ -152,7 +179,10 @@ const AQMIND = () => {
       } else {
         const ref = collection(db, "users", user.uid, "reservatorios");
         const docRef = await addDoc(ref, dados);
-        setAQMIND([{ id: docRef.id, usuarioId: user.uid, ...dados }, ...aqmind]);
+        setReservatorios([
+          { id: docRef.id, usuarioId: user.uid, ...dados },
+          ...reservatorios,
+        ]);
       }
 
       handleClose();
@@ -161,17 +191,32 @@ const AQMIND = () => {
     }
   };
 
+  // Excluir
   const handleDelete = async (reservatorio) => {
     try {
       await deleteDoc(
-        doc(db, "users", reservatorio.usuarioId, "reservatorios", reservatorio.id)
+        doc(
+          db,
+          "users",
+          reservatorio.usuarioId,
+          "reservatorios",
+          reservatorio.id
+        )
       );
-      setAQMIND(aqmind.filter((r) => !(r.id === reservatorio.id && r.usuarioId === reservatorio.usuarioId)));
+      setReservatorios(
+        reservatorios.filter(
+          (r) =>
+            !(
+              r.id === reservatorio.id && r.usuarioId === reservatorio.usuarioId
+            )
+        )
+      );
     } catch (error) {
       console.error("Erro ao excluir:", error);
     }
   };
 
+  // Editar
   const handleEdit = (reservatorio) => {
     setIsEditing(true);
     setCurrentReservatorio(reservatorio);
@@ -179,6 +224,7 @@ const AQMIND = () => {
     setShowModal(true);
   };
 
+  // Criar
   const handleOpen = () => {
     setIsEditing(false);
     setFormData({
@@ -189,6 +235,8 @@ const AQMIND = () => {
       raio: "",
       largura: "",
       comprimento: "",
+      uso: "Uso pessoal",
+      quantidadePessoas: "",
     });
     setShowModal(true);
   };
@@ -198,8 +246,26 @@ const AQMIND = () => {
     setCurrentReservatorio(null);
   };
 
+  // Abrir modal chave ESP32
+  const handleShowKey = (reservatorio) => {
+    setReservatorioSelecionado(reservatorio);
+    setShowKeyModal(true);
+  };
+
+  const handleCloseKey = () => {
+    setReservatorioSelecionado(null);
+    setShowKeyModal(false);
+  };
+
   return (
-    <div className="container py-4" style={{ fontFamily: "Arial, sans-serif", backgroundColor: "#f8f9fa", minHeight: "100vh" }}>
+    <div
+      className="container py-4"
+      style={{
+        fontFamily: "Arial, sans-serif",
+        backgroundColor: "#f8f9fa",
+        minHeight: "100vh",
+      }}
+    >
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h1>Reservatórios</h1>
         {user && userData?.role !== "admin" && (
@@ -210,12 +276,18 @@ const AQMIND = () => {
       </div>
 
       {!user ? (
-        <p className="text-warning">⚠️ Faça login para gerenciar seus reservatórios.</p>
+        <p className="text-warning">
+          ⚠️ Faça login para gerenciar seus reservatórios.
+        </p>
       ) : (
         <>
-          <h2 className="mt-3">{userData?.role === "admin" ? "Todos os Reservatórios" : "Seus Reservatórios"}</h2>
+          <h2 className="mt-3">
+            {userData?.role === "admin"
+              ? "Todos os Reservatórios"
+              : "Seus Reservatórios"}
+          </h2>
 
-          {aqmind.length === 0 ? (
+          {reservatorios.length === 0 ? (
             <p>Nenhum reservatório cadastrado.</p>
           ) : (
             <div className="table-responsive mt-3">
@@ -225,32 +297,60 @@ const AQMIND = () => {
                     {userData?.role === "admin" && <th>Usuário</th>}
                     <th>Nome</th>
                     <th>Endereço</th>
+                    <th>Uso</th>
+                    <th>Pessoas</th>
                     <th>Formato</th>
                     <th>Volume (m³)</th>
                     <th>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {aqmind.map((r) => (
+                  {reservatorios.map((r) => (
                     <tr key={`${r.usuarioId}-${r.id}`}>
                       {userData?.role === "admin" && (
                         <td>{r.usuarioNome || r.usuarioEmail || r.usuarioId}</td>
                       )}
                       <td>{r.nome}</td>
                       <td>{r.endereco}</td>
+                      <td>{r.uso}</td>
+                      <td>
+                        {r.uso === "Uso pessoal" ? r.quantidadePessoas : "—"}
+                      </td>
                       <td>{r.formato}</td>
                       <td>
                         {r.volume ? (
-                          <span className="badge bg-info">{r.volume.toFixed(2)}</span>
+                          <span className="badge bg-info">
+                            {r.volume.toFixed(2)}
+                          </span>
                         ) : (
                           "—"
                         )}
                       </td>
                       <td>
-                        <Button variant="warning" size="sm" className="me-2" onClick={() => handleEdit(r)} title="Editar">
+                        <Button
+                          variant="info"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => handleShowKey(r)}
+                          title="Ver Código ESP32"
+                        >
+                          <i className="bi bi-cpu"></i>
+                        </Button>
+                        <Button
+                          variant="warning"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => handleEdit(r)}
+                          title="Editar"
+                        >
                           <i className="bi bi-pencil"></i>
                         </Button>
-                        <Button variant="danger" size="sm" onClick={() => handleDelete(r)} title="Excluir">
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => handleDelete(r)}
+                          title="Excluir"
+                        >
                           <i className="bi bi-trash"></i>
                         </Button>
                       </td>
@@ -261,7 +361,7 @@ const AQMIND = () => {
             </div>
           )}
 
-          {/* Modal de Cadastro/Edição */}
+          {/* Modal Cadastro/Edição */}
           <Modal show={showModal} onHide={handleClose} size="lg" centered>
             <Modal.Header closeButton>
               <Modal.Title>
@@ -270,26 +370,77 @@ const AQMIND = () => {
             </Modal.Header>
             <Modal.Body>
               <Form>
+                {/* Nome e Endereço */}
                 <div className="row g-3">
                   <div className="col-md-6">
                     <Form.Group>
                       <Form.Label>Nome</Form.Label>
-                      <Form.Control type="text" name="nome" value={formData.nome} onChange={handleChange} required />
+                      <Form.Control
+                        type="text"
+                        name="nome"
+                        value={formData.nome}
+                        onChange={handleChange}
+                        required
+                      />
                     </Form.Group>
                   </div>
                   <div className="col-md-6">
                     <Form.Group>
                       <Form.Label>Endereço</Form.Label>
-                      <Form.Control type="text" name="endereco" value={formData.endereco} onChange={handleChange} required />
+                      <Form.Control
+                        type="text"
+                        name="endereco"
+                        value={formData.endereco}
+                        onChange={handleChange}
+                        required
+                      />
                     </Form.Group>
                   </div>
                 </div>
 
+                {/* Uso */}
+                <div className="row g-3 mt-2">
+                  <div className="col-md-6">
+                    <Form.Group>
+                      <Form.Label>Uso do Reservatório</Form.Label>
+                      <Form.Select
+                        name="uso"
+                        value={formData.uso}
+                        onChange={handleChange}
+                      >
+                        <option value="Uso pessoal">Uso pessoal</option>
+                        <option value="Agricultura">Agricultura</option>
+                        <option value="Pecuária">Pecuária</option>
+                        <option value="Agropecuária">Agropecuária</option>
+                      </Form.Select>
+                    </Form.Group>
+                  </div>
+
+                  {formData.uso === "Uso pessoal" && (
+                    <div className="col-md-6">
+                      <Form.Group>
+                        <Form.Label>Quantas pessoas usam?</Form.Label>
+                        <Form.Control
+                          type="number"
+                          name="quantidadePessoas"
+                          value={formData.quantidadePessoas}
+                          onChange={handleChange}
+                        />
+                      </Form.Group>
+                    </div>
+                  )}
+                </div>
+
+                {/* Formato */}
                 <div className="row g-3 mt-2">
                   <div className="col-md-4">
                     <Form.Group>
                       <Form.Label>Formato</Form.Label>
-                      <Form.Select name="formato" value={formData.formato} onChange={handleChange}>
+                      <Form.Select
+                        name="formato"
+                        value={formData.formato}
+                        onChange={handleChange}
+                      >
                         <option value="cilindro">Cilindro</option>
                         <option value="retangular">Retangular</option>
                       </Form.Select>
@@ -297,30 +448,61 @@ const AQMIND = () => {
                   </div>
                 </div>
 
+                {/* Dimensões */}
                 {formData.formato === "cilindro" ? (
                   <div className="row g-3 mt-2">
                     <div className="col-md-6">
                       <Form.Label>Altura (m)</Form.Label>
-                      <Form.Control type="number" name="altura" value={formData.altura} onChange={handleChange} step="0.01" />
+                      <Form.Control
+                        type="number"
+                        name="altura"
+                        value={formData.altura}
+                        onChange={handleChange}
+                        step="0.01"
+                      />
                     </div>
                     <div className="col-md-6">
                       <Form.Label>Raio (m)</Form.Label>
-                      <Form.Control type="number" name="raio" value={formData.raio} onChange={handleChange} step="0.01" />
+                      <Form.Control
+                        type="number"
+                        name="raio"
+                        value={formData.raio}
+                        onChange={handleChange}
+                        step="0.01"
+                      />
                     </div>
                   </div>
                 ) : (
                   <div className="row g-3 mt-2">
                     <div className="col-md-4">
                       <Form.Label>Altura (m)</Form.Label>
-                      <Form.Control type="number" name="altura" value={formData.altura} onChange={handleChange} step="0.01" />
+                      <Form.Control
+                        type="number"
+                        name="altura"
+                        value={formData.altura}
+                        onChange={handleChange}
+                        step="0.01"
+                      />
                     </div>
                     <div className="col-md-4">
                       <Form.Label>Largura (m)</Form.Label>
-                      <Form.Control type="number" name="largura" value={formData.largura} onChange={handleChange} step="0.01" />
+                      <Form.Control
+                        type="number"
+                        name="largura"
+                        value={formData.largura}
+                        onChange={handleChange}
+                        step="0.01"
+                      />
                     </div>
                     <div className="col-md-4">
                       <Form.Label>Comprimento (m)</Form.Label>
-                      <Form.Control type="number" name="comprimento" value={formData.comprimento} onChange={handleChange} step="0.01" />
+                      <Form.Control
+                        type="number"
+                        name="comprimento"
+                        value={formData.comprimento}
+                        onChange={handleChange}
+                        step="0.01"
+                      />
                     </div>
                   </div>
                 )}
@@ -335,10 +517,41 @@ const AQMIND = () => {
               </Button>
             </Modal.Footer>
           </Modal>
+
+          {/* Modal chave ESP32 */}
+          <Modal show={showKeyModal} onHide={handleCloseKey} centered>
+            <Modal.Header closeButton>
+              <Modal.Title>Código para ESP32</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              {reservatorioSelecionado && (
+                <>
+                  <p>
+                    <strong>Reservatório:</strong>{" "}
+                    {reservatorioSelecionado.nome}
+                  </p>
+                  <p>
+                    <strong>ID único:</strong>
+                  </p>
+                  <code>{reservatorioSelecionado.reservatorioKey}</code>
+                  <hr />
+                  <p>
+                    👉 Use este ID no seu ESP32 para enviar os dados de{" "}
+                    <b>nível</b> e <b>fluxo</b> para este reservatório.
+                  </p>
+                </>
+              )}
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onClick={handleCloseKey}>
+                Fechar
+              </Button>
+            </Modal.Footer>
+          </Modal>
         </>
       )}
     </div>
   );
 };
 
-export default AQMIND;
+export default Reservatorios;

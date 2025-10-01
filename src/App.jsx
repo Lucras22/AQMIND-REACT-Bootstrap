@@ -5,7 +5,7 @@ import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
-import AQMIND from "./pages/AQMIND";
+import Reservatorios from "./pages/Reservatorios";
 
 function App() {
   return (
@@ -18,7 +18,7 @@ function App() {
   <Route path="/login" element={<Login />} />
   <Route path="/profile" element={<Profile />} />
   <Route path="/dashboard" element={<Dashboard />} /> 
-  <Route path="/AQMIND" element={<AQMIND />} /> 
+  <Route path="/reservatorios" element={<Reservatorios />} /> 
 </Routes>
         </div>
         <AppFooter />

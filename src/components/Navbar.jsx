@@ -51,8 +51,8 @@ function AppNavbar() {
                 <Nav.Link as={Link} to="/Dashboard" className="nav-link-custom">
                   Dashboard
                 </Nav.Link>
-                <Nav.Link as={Link} to="/AQMIND" className="nav-link-custom">
-                  AQMIND
+                <Nav.Link as={Link} to="/Reservatorios" className="nav-link-custom">
+                  Reservatorios
                 </Nav.Link>
                 <Nav.Link as={Link} to="/profile" className="nav-link-custom">
                   Profile

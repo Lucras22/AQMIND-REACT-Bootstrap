@@ -123,7 +123,7 @@ function Profile() {
               {extraData && (
                 <>
                   <p><b>Nome:</b> {extraData.firstname} {extraData.lastname}</p>
-                  <p><b>Role:</b> {extraData.role}</p>
+                  <p><b>Tipo de Conta:</b> {extraData.role}</p>
                 </>
               )}
             </div>
