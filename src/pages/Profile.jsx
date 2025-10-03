@@ -77,21 +77,8 @@ console.error("Erro ao carregar usuários:", error);
 }
 };
 
-      {user ? (
-        <>
-          {/* Card Informações Pessoais */}
-          <div className="card shadow-sm mb-4 border-0">
-            <div className="card-body bg-light rounded">
-              <h4 className="text-primary">Informações Pessoais</h4>
-              <p><b>Email:</b> {user.email}</p>
-              {extraData && (
-                <>
-                  <p><b>Nome:</b> {extraData.firstname} {extraData.lastname}</p>
-                  <p><b>Tipo de Conta:</b> {extraData.role}</p>
-                </>
-              )}
-            </div>
-          </div>
+const handleDeleteUser = async (uid) => {
+if (!window.confirm("Tem certeza que deseja excluir este usuário?")) return;
 
 try {
   await deleteDoc(doc(db, "users", uid));
@@ -141,7 +128,7 @@ return ( <div className="container mt-4"> <h2 className="text-primary mb-4">Meu 
           {extraData && (
             <>
               <p><b>Nome:</b> {extraData.firstname} {extraData.lastname}</p>
-              <p><b>Role:</b> {extraData.role}</p>
+              <p><b>Tipo de Conta:</b> {extraData.role}</p>
             </>
           )}
         </div>
