@@ -67,8 +67,8 @@ const Dashboard = () => {
 
   return (
     <div className="container mt-4">
-      <h1 className="text-primary mb-4">Painel de Vendas</h1>
-
+      <h1 className="text-primary mb-4">Painel de Consumo</h1>
+asdfg
       {/* Botões de filtro */}
       <div className="mb-4">
         {["diário", "semanal", "mensal", "anual"].map((p) => (
